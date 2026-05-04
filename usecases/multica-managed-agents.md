@@ -4,6 +4,16 @@
 
 把 OpenClaw、Claude Code、Codex、Hermes 同时用起来，最大的痛点不是工具不够强，而是**看不到全局**——每个 CLI 一个终端窗口，进度散落各处，分工和交接全靠脑子。Multica 把它们统一到一个 Web 看板上：每个 Agent 是看板上的"同事"，分配 Issue（任务条目）、提交评论、报告阻塞——和给真人分配任务一模一样。
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/multica-ai/multica/main/docs/assets/hero-screenshot.png" alt="Multica 看板视图：Backlog / Todo / In Progress / In Review / Done 五列，每张卡片显示 Issue 编号、标题、优先级和负责的 Agent" width="800">
+</p>
+
+### 一个 30 秒小例子
+
+周一早上你想推三件事：①调研最近两周新出的开源个人智能体；②修一个生产 bug；③给落地页换一版文案。以前要开三个终端、复制三段提示词、过半小时回头看哪个跑完了。
+
+在 Multica 里：在 Web 看板点 **New Issue** 三次写下三个标题 → 分别拖给 `OpenClaw (research)`、`Codex (backend)`、`Claude (frontend)` → 关上电脑去开会。每个 Agent 在你本机各自的工作目录里跑，状态从 `Backlog → In Progress → Done` 自动流转，完成后看板上能看到产物链接和评论，不用再切终端。
+
 ## 它能做什么
 
 - **自动发现 CLI** — Daemon（守护进程）启动时扫描 PATH，自动检测 `claude` / `codex` / `openclaw` / `hermes` / `gemini` / `opencode` / `pi` / `cursor-agent` / `kimi` / `kiro-cli`，注册为可选 Provider（智能体提供方）
@@ -26,6 +36,36 @@
 - 自部署可选：[Docker](https://www.docker.com/)（PostgreSQL 17 + pgvector）
 
 ## 如何设置
+
+### 0. 一句话让 Agent 替你装好
+
+如果手上已经有 OpenClaw 或 Hermes，把整个安装-配置-验证流程交给它一次跑完——**不要先 clone 仓库**，让 Agent 自己读官方 README 决定路径。把下面这段提示词贴给 OpenClaw / Hermes：
+
+以下提示词让 Agent 从零安装 Multica、根据你的需要选「云端」或「自部署」、启动 daemon 并验证已识别 PATH 上的 CLI：
+
+```text
+Set up Multica (https://github.com/multica-ai/multica) on this machine.
+
+1. Read the official README and CLI_AND_DAEMON.md to confirm the latest install path
+2. Ask me ONE question: "cloud (multica.ai)" or "self-host (Docker, no external deps)"?
+   - If I'm in mainland China or want zero external dependencies → recommend self-host
+   - If I want fastest path and don't mind email/OAuth login → recommend cloud
+3. Install via Homebrew if available, otherwise the official install script
+4. Run `multica setup cloud` OR `multica setup self-host` based on my answer
+5. Verify with `multica daemon status --output json` — confirm the agents array
+   includes every coding CLI installed on this machine (claude, codex, openclaw,
+   hermes, gemini, etc.)
+6. Print a 5-line summary: install method, daemon PID, detected providers,
+   workspace ID, next step ("open Web UI and create your first Agent")
+
+Do NOT hardcode any API keys. If a step needs credentials, pause and ask me.
+```
+
+跑完之后再回到下面的步骤 4 在 Web 看板上创建 Agent。如果你想完全跳过手动步骤，把 **本文件整段** 都喂给 Agent 也行——它会按 1-6 节顺序执行。
+
+> **两种部署怎么选**：
+> - **云端（multica.ai）** — 最快，邮件链接登录即用；依赖 Resend / Google OAuth，国内访问可能不稳
+> - **自部署** — Apache 2.0 协议本地起 Docker（前端 + Go 后端 + PostgreSQL 17 + pgvector），全程不出域，国内推荐
 
 ### 1. 安装 CLI
 
