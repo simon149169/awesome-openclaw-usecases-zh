@@ -52,24 +52,21 @@
 
 如果手上已经有 OpenClaw 或 Hermes，把整个安装-配置-验证流程交给它一次跑完——**不要先 clone 仓库**，让 Agent 自己读官方 README 决定路径。把下面这段提示词贴给 OpenClaw / Hermes：
 
-以下提示词让 Agent 从零安装 Multica、根据你的需要选「云端」或「自部署」、启动 daemon 并验证已识别 PATH 上的 CLI：
-
 ```text
-Set up Multica (https://github.com/multica-ai/multica) on this machine.
+请帮我在这台机器上安装并初始化 Multica（https://github.com/multica-ai/multica）。
 
-1. Read the official README and CLI_AND_DAEMON.md to confirm the latest install path
-2. Ask me ONE question: "cloud (multica.ai)" or "self-host (Docker, no external deps)"?
-   - If I'm in mainland China or want zero external dependencies → recommend self-host
-   - If I want fastest path and don't mind email/OAuth login → recommend cloud
-3. Install via Homebrew if available, otherwise the official install script
-4. Run `multica setup cloud` OR `multica setup self-host` based on my answer
-5. Verify with `multica daemon status --output json` — confirm the agents array
-   includes every coding CLI installed on this machine (claude, codex, openclaw,
-   hermes, gemini, etc.)
-6. Print a 5-line summary: install method, daemon PID, detected providers,
-   workspace ID, next step ("open Web UI and create your first Agent")
+1. 先读官方 README 和 CLI_AND_DAEMON.md，确认最新的安装方式
+2. 问我一个问题，二选一：「云端 multica.ai」还是「自部署（Docker，不依赖任何外部服务）」？
+   - 我在中国大陆或者希望零外部依赖 → 推荐自部署
+   - 想最快上手、不介意邮件 / OAuth 登录 → 推荐云端
+3. 优先用 Homebrew 安装，没有 Homebrew 则用官方 install 脚本
+4. 根据我的选择执行 `multica setup cloud` 或 `multica setup self-host`
+5. 用 `multica daemon status --output json` 验证：确认 agents 数组里包含本机
+   PATH 上所有已安装的编码 CLI（claude / codex / openclaw / hermes / gemini 等）
+6. 最后用 5 行汇报结果：安装方式、daemon PID、识别到的 Provider 列表、
+   workspace ID、下一步操作（"打开 Web UI 创建第一个 Agent"）
 
-Do NOT hardcode any API keys. If a step needs credentials, pause and ask me.
+任何 API key 一律不要硬编码。需要凭证时先停下来问我。
 ```
 
 跑完之后再回到下面的步骤 4 在 Web 看板上创建 Agent。如果你想完全跳过手动步骤，把 **本文件整段** 都喂给 Agent 也行——它会按 1-6 节顺序执行。
@@ -273,17 +270,15 @@ cd multica && make selfhost-build
 
 Multica 没有内置飞书通知，让 Agent 在完成任务后调用飞书自定义机器人。把 `$FEISHU_WEBHOOK_URL` 通过 Agent **Env Vars** 注入，然后在 **Instructions** 加一段：
 
-以下提示词让 Agent 在任务进入终态时向飞书机器人推送一张交互卡片：
-
 ```text
-## Notification on Task Completion
+## 任务完成后推送飞书通知
 
-When the assigned issue moves to a terminal state (completed/failed):
-1. POST a card message to $FEISHU_WEBHOOK_URL with msg_type "interactive"
-2. Card body should include: issue title, final status, branch/PR link if any,
-   ~80-char summary of what was done
-3. Skip notifications for intermediate states (queued/running/dispatched)
-4. On failure, append the last error line from the run log
+当我分配的 Issue 进入终态（completed / failed）时，请：
+1. 向 $FEISHU_WEBHOOK_URL 发一张 msg_type 为 "interactive" 的飞书卡片消息
+2. 卡片正文需包含：Issue 标题、最终状态、分支或 PR 链接（如有）、
+   80 字以内的工作摘要
+3. 中间状态（queued / running / dispatched）不要发送通知
+4. 失败时，把运行日志的最后一行错误信息附在卡片末尾
 ```
 
 飞书自定义机器人创建步骤参考 [飞书 AI 助手](cn-feishu-ai-assistant.md#创建自定义机器人)。
