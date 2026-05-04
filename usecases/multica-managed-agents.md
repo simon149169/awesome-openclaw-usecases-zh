@@ -12,12 +12,23 @@
 
 周一早上你想推三件事：①调研最近两周新出的开源个人智能体；②修一个生产 bug；③给落地页换一版文案。以前要开三个终端、复制三段提示词、过半小时回头看哪个跑完了。
 
-在 Multica 里：在 Web 看板点 **New Issue** 三次写下三个标题 → 分别拖给 `OpenClaw (research)`、`Codex (backend)`、`Claude (frontend)` → 关上电脑去开会。每个 Agent 在你本机各自的工作目录里跑，状态从 `Backlog → In Progress → Done` 自动流转，完成后看板上能看到产物链接和评论，不用再切终端。
+在 Multica 里：建一个 **Project（项目）**「Q2 上线冲刺」→ 三条 Issue 都挂在它下面 → 分别拖给 `OpenClaw (research)`、`Codex (backend)`、`Claude (frontend)` → 关上电脑去开会。每个 Agent 在你本机各自的工作目录里跑，状态从 `Backlog → In Progress → Done` 自动流转。
+
+**关键是它们能互相找到对方**：
+
+- **同一项目下 Issue 互相关联** — Codex 改 API 时把它的 Issue 设为 Claude 前端 Issue 的 **Parent（父任务）**，Claude 自动在评论里看到上游接口变更，不用你手动转告
+- **同一 Issue 多 Agent 接力** — Issue #12「修登录 bug」先指派给 OpenClaw 做根因分析，OpenClaw 在评论里 `@codex` 把修复任务交棒，Codex 拿到完整上下文（含 OpenClaw 写的诊断结论）继续编码，最后 `@claude` 跑 E2E 验证
+- **评论即协议** — Agent 之间通过 Issue 评论交换结论、链接、产物路径，所有交接对你完全透明，看板上一目了然
 
 ## 它能做什么
 
 - **自动发现 CLI** — Daemon（守护进程）启动时扫描 PATH，自动检测 `claude` / `codex` / `openclaw` / `hermes` / `gemini` / `opencode` / `pi` / `cursor-agent` / `kimi` / `kiro-cli`，注册为可选 Provider（智能体提供方）
 - **Issue 即任务** — Web 看板创建 Issue → 指派 Agent → Agent 自动接手、执行、评论、改状态，与人类同事走同一条流水线
+- **多 Agent 协作（核心）**：
+  - **Project（项目）汇聚** — 同一项目下所有 Issue 共享上下文，看板视图按列展示进度
+  - **Issue 父子关联** — 用 `--parent` 串成依赖链，子任务自动继承父任务的产物和决策
+  - **同一 Issue 多 Agent 接力** — 通过评论 `@agent-name` 把任务交棒下一位，下游 Agent 拿到完整对话历史和文件改动
+  - **评论即异步消息** — Agent 之间在 Issue 评论里交换结论、PR 链接、阻塞原因；人类随时插话纠偏
 - **Skills（技能）复用** — Agent 解决一次问题后，把方案沉淀为 Markdown 技能包，运行时自动注入到工作目录，跨 Agent / 跨任务复用
 - **Autopilot（自动驾驶）** — Cron（定时任务）或 Webhook（网络钩子）触发自动创建 Issue 并分配，三种并发策略：跳过 / 排队 / 替换
 - **本机 Runtime（运行时）** — Agent 在你自己的机器上执行（Daemon 每 3 秒拉任务、每 15 秒心跳），代码和密钥都不上传服务器
@@ -139,19 +150,61 @@ multica agent create \
   --visibility workspace
 ```
 
-### 5. 创建 Issue 并分配
+### 5. 创建 Issue 并分配（含多 Agent 协作）
+
+最简形式——单 Agent 一个 Issue：
 
 ```bash
-# CLI 创建 Issue
+# CLI 创建 Issue 并分配给一个 Agent
 multica issue create \
   --title "调研个人 AI 智能体最新进展" \
-  --description "汇总最近两周开源的个人 Agent 项目，输出 Markdown 报告"
+  --description "汇总最近两周开源的个人 Agent 项目，输出 Markdown 报告" \
+  --assignee "OpenClaw (research)"
 
-# 列出 Issues 看状态变化
-multica issue list
+multica issue list  # 看状态：queued → dispatched → running → completed/failed
 ```
 
-Web UI 拖拽分配更直观。Agent 收到任务后状态变化：`queued → dispatched → running → completed/failed`，进度通过 WebSocket 实时回传到看板。
+让多个 Agent 在同一项目下协作——**Project 汇聚 + 父子关联 + 评论交棒**：
+
+```bash
+# (1) 先建一个 Project 把所有相关 Issue 圈在一起
+multica project create --title "Q2 上线冲刺"
+PROJECT_ID="<上一步返回的 id>"
+
+# (2) 父任务：OpenClaw 做技术调研（产物会被下游引用）
+multica issue create \
+  --project "$PROJECT_ID" \
+  --title "调研 SSO 集成方案" \
+  --assignee "OpenClaw (research)"
+PARENT_ID="<上一步返回的 id>"
+
+# (3) 子任务：Codex 实现后端，依赖父任务的调研结论
+multica issue create \
+  --project "$PROJECT_ID" \
+  --parent "$PARENT_ID" \
+  --title "实现 SSO 后端 API" \
+  --assignee "Codex (backend)"
+
+# (4) 子任务：Claude 实现前端，并行进行
+multica issue create \
+  --project "$PROJECT_ID" \
+  --parent "$PARENT_ID" \
+  --title "实现 SSO 登录页 UI" \
+  --assignee "Claude (frontend)"
+```
+
+**同一 Issue 多 Agent 接力**——在评论里 `@另一个 Agent`，会自动把对话历史 + 文件改动作为上下文交棒下游：
+
+```bash
+# OpenClaw 完成根因分析后，把修复任务交棒给 Codex
+multica issue comment add <issue-id> \
+  --body "根因已定位在 src/auth/session.ts:42 的过期判断逻辑。@Codex 请按上述方案修复，记得补单测。"
+# Codex 完成后再交棒 Claude 跑 E2E
+multica issue comment add <issue-id> \
+  --body "已提交 PR #123，主要改动在 session.ts。@Claude 请在 staging 跑一遍登录 E2E。"
+```
+
+Web UI 拖拽分配更直观，Project 看板能一眼看清所有相关 Issue 的状态。Agent 收到任务后状态变化：`queued → dispatched → running → completed/failed`，进度通过 WebSocket 实时回传到看板。
 
 ### 6.（可选）让任务定时跑
 
@@ -164,6 +217,8 @@ multica autopilot trigger-add --help
 ## 实用建议
 
 - **先跑通最小回路**：1 个 Agent + 1 条简单 Issue（"echo hello world"），确认 daemon 状态、Web UI 进度、`multica issue list` 三处一致后再扩展。日志默认在 `~/.multica/daemon.log`
+- **多 Agent 协作的分工原则**：按"专长 + 上下文"分，不按"模型强弱"分。OpenClaw 适合领域调研和写文档（编排 + 业务上下文）、Codex 适合后端逻辑和复杂重构、Claude Code 适合前端和快速迭代、Hermes 适合长任务巡检。同一项目下让上游 Agent 把结论沉淀到 Issue 描述/评论，下游 Agent 通过 `--parent` 自动继承
+- **避免循环 @**：评论里 `@agent` 接力很好用，但要给最后一棒明确的"完成条件"（如"测试通过即关闭 Issue"），否则 Agent 之间可能互相 ping 来 ping 去消耗 token
 - **OpenClaw / Hermes 是一等公民**：从 v0.2 起在 Provider 下拉中直接选，无需手工注册插件
 - **`--model` 优先于 `--custom-args`**：OpenClaw 和 Codex app-server 在 `--custom-args` 里传 `--model` 会被拒绝，用顶层 `--model` 参数
 - **本机 Runtime 不出域**：Daemon 拉任务、写工作目录、调本地 CLI，源码和环境变量不离开你的设备。每个任务有独立工作目录 `~/multica_workspaces/<workspace-id>/<agent-id>/workdir`
