@@ -129,7 +129,7 @@ multica daemon status --output json
 
 ### 4. 在 Web 看板创建 Agent
 
-打开 Web UI（云端 `https://multica.ai/app` 或自部署 `http://localhost:3002`），进入 **Settings → Agents → New Agent**：
+打开 Web UI（云端 `https://multica.ai/app` 或自部署 `http://localhost:3000`），进入 **Settings → Agents → New Agent**：
 
 | 字段 | 说明 |
 |------|------|
@@ -257,14 +257,15 @@ git clone https://github.com/multica-ai/multica.git
 cd multica && make selfhost-build
 ```
 
-自部署默认端口：前端 `http://localhost:3002`、后端 `http://localhost:8080`。`.env` 必填项：
+自部署默认端口：前端 `http://localhost:3000`、后端 `http://localhost:8080`（可用 `multica setup self-host --port 9090 --frontend-port 4000` 改）。`.env` 必填项：
 
 | 变量 | 说明 |
 |------|------|
 | `DATABASE_URL` | PostgreSQL 连接串 |
 | `JWT_SECRET` | 用 `openssl rand -hex 32` 生成 |
 | `FRONTEND_ORIGIN` | 前端 URL，用于 CORS |
-| `RESEND_API_KEY` | 邮件登录所需，国内可去 [Resend](https://resend.com) 注册（支持国内邮箱） |
+
+**邮件登录是可选的**——`RESEND_API_KEY` 留空时，验证码会打印到 daemon stdout（或 `~/.multica/daemon.log`），照抄即可登录；本地开发场景把 `APP_ENV=development` 打开还能用万能验证码 `888888`（**仅限本机/内网，不要在公网实例上用**）。需要正式邮件登录时再去 [Resend](https://resend.com) 注册并填 `RESEND_API_KEY` 与 `RESEND_FROM_EMAIL`。
 
 完整变量见 [SELF_HOSTING_ADVANCED.md](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING_ADVANCED.md)。
 
